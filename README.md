@@ -1,7 +1,7 @@
 # terraform-aws-email-forwarding
 
-Local, unreleased implementation candidate for `leverage-works/terraform-aws-email-forwarding`.
-No public repository, tag or live deployment exists yet. Terraform and the Lambda
+Public, unreleased implementation candidate for `leverage-works/terraform-aws-email-forwarding`.
+No release tag or live deployment exists yet. Terraform and the Lambda
 implementation will be versioned together; project roots pin immutable releases.
 
 One module instance owns forwarding for one domain and one recipient. It owns the

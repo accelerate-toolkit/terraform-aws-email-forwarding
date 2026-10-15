@@ -73,7 +73,7 @@ class HarnessTests(unittest.TestCase):
                 patch.object(deploy, 'aws', side_effect=[caller, {'Metadata': {'Name': self.config['receipt_rule_set_name']}}]), \
                 patch.object(deploy.shutil, 'which', return_value='/terraform'), \
                 patch.object(deploy.subprocess, 'run', return_value=Mock(stdout=version)), \
-                patch.dict(os.environ, {'AWS_ACCESS_KEY_ID': 'fixture', 'TF_CLI_ARGS_plan': '-destroy'}), \
+                patch.dict(os.environ, {'AWS_ACCESS_KEY_ID': 'fixture', 'TF_CLI_ARGS_plan': '-destroy'}, clear=True), \
                 patch.object(deploy.os, 'execve') as execute:
             deploy.run(self.path / 'config.local.json', ['plan', '-out=a file.tfplan'])
         binary, argv, env = execute.call_args.args
@@ -83,6 +83,18 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(env['TF_WORKSPACE'], 'default')
         self.assertEqual(env['AWS_PROFILE'], self.config['aws_profile'])
         self.assertIn('backend.tfbackend', env['TF_CLI_ARGS_init'])
+
+    def test_ci_deployment_is_blocked_before_configuration_or_aws_access(self):
+        for flag in ['CI', 'GITHUB_ACTIONS']:
+            with self.subTest(flag=flag), patch.dict(os.environ, {flag: 'true'}, clear=True), \
+                    patch.object(config, 'load') as load_config, \
+                    patch.object(deploy, 'aws') as aws, \
+                    patch.object(deploy.os, 'execve') as execute:
+                with self.assertRaisesRegex(RuntimeError, 'no CI AWS access'):
+                    deploy.run(self.path / 'config.local.json', ['plan'])
+                load_config.assert_not_called()
+                aws.assert_not_called()
+                execute.assert_not_called()
 
     def test_valid_mail_requires_manual_confirmation(self):
         run_id, directory, received = self.fixture()
