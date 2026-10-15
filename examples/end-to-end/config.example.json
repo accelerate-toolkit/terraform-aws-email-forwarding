@@ -1,0 +1,22 @@
+{
+  "aws_profile": "example-nonprod-admin",
+  "account_id": "123456789012",
+  "role_name_prefix": "AWSReservedSSO_ExampleAdmin_",
+  "region": "eu-west-2",
+  "terraform_binary": "terraform",
+  "backend": {
+    "bucket": "example-terraform-state",
+    "key": "module-tests/email-forwarding/terraform.tfstate",
+    "region": "eu-west-2"
+  },
+  "resource_prefix": "email-forwarding-test",
+  "hosted_zone_id": "ZEXAMPLE",
+  "domain": "email-forwarding.dev.example.org",
+  "receipt_rule_set_name": "example-inbound",
+  "recipient": "test@email-forwarding.dev.example.org",
+  "forward_from": "forwarder@email-forwarding.dev.example.org",
+  "destination": "tester@example.net",
+  "test_sender": "tester@example.net",
+  "alert_email": "operator@example.com",
+  "enable_mx": false
+}

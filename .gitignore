@@ -1,0 +1,22 @@
+/build/
+/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.zip
+__pycache__/
+.apm/cache/
+apm_modules/
+.agents/
+
+# Private deployment inputs and generated test artifacts.
+**/config.local.json
+**/*.local.json
+**/.terraform/
+**/build/
+*.eml
+*.tfvars
+*.tfvars.json
+*.tfbackend
+.env
+.env.*

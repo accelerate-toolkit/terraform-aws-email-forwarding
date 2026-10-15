@@ -1,0 +1,68 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>leverage-works/renovate-config"
+  ],
+  "timezone": "Europe/London",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "automerge": true,
+  "prConcurrentLimit": 3,
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "matchManagers": [
+        "terraform-version",
+        "terraform"
+      ],
+      "groupName": "terraform toolchain"
+    }
+  ],
+  "pep723": {
+    "managerFilePatterns": [
+      "/^scripts/.*\\.py$/",
+      "/^tests/.*\\.py$/",
+      "/^examples/.*\\.py$/"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "APM_VERSION := (?<currentValue>[^\\s]+)"
+      ],
+      "depNameTemplate": "apm-cli",
+      "datasourceTemplate": "pypi"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "RENOVATE_VERSION := (?<currentValue>[^\\s]+)"
+      ],
+      "depNameTemplate": "renovate",
+      "datasourceTemplate": "npm"
+    }
+  ],
+  "automergeType": "pr",
+  "automergeStrategy": "squash",
+  "platformAutomerge": false,
+  "ignoreTests": false,
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/vendor/**",
+    "**/build/**",
+    "**/apm_modules/**",
+    "**/.agents/**",
+    "**/.codex/**",
+    "**/config.local.json"
+  ]
+}

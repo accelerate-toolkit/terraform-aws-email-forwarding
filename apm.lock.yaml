@@ -1,0 +1,134 @@
+lockfile_version: '1'
+apm_version: 0.33.0
+dependencies:
+- repo_url: leverage-works/agent-context
+  name: org-meta-bundle
+  host: github.com
+  resolved_commit: 8f583b2edb2b7ec4aa00051b57c504ce671c41da
+  resolved_ref: v0.4.0
+  version: 0.4.0
+  virtual_path: packages/org-meta-bundle
+  is_virtual: true
+  package_type: apm_package
+  deployed_files:
+  - .agents/skills/collaborate-cross-repos
+  - .agents/skills/collaborate-cross-repos/SKILL.md
+  - .agents/skills/use-apm
+  - .agents/skills/use-apm/SKILL.md
+  - .agents/skills/use-cached-docs
+  - .agents/skills/use-cached-docs/SKILL.md
+  - .agents/skills/use-cached-docs/cached-docs.yml
+  - .agents/skills/use-cached-docs/scripts/hydrate_cached_docs.py
+  - .agents/skills/work-on-gh-issues
+  - .agents/skills/work-on-gh-issues/SKILL.md
+  - .agents/skills/work-on-gh-issues/scripts/list_issues.py
+  deployed_file_hashes:
+    .agents/skills/collaborate-cross-repos/SKILL.md: sha256:9ce3955a4393eabb9520ed8e567216dcaabc46018fae29cf3a868c31b20402ca
+    .agents/skills/use-apm/SKILL.md: sha256:4d6f0e2ba5a004249d40420b015db2a6e675dd933cd41aa41c181840847433da
+    .agents/skills/use-cached-docs/SKILL.md: sha256:adfa60831604ee4e90270eceaf1c2af3d5cd39c8c4723388c99c756308d599bb
+    .agents/skills/use-cached-docs/cached-docs.yml: sha256:919a4ba9cd6d392dfbac636d4cd63fe51e86194c54d2e21ca8df40773cc782f3
+    .agents/skills/use-cached-docs/scripts/hydrate_cached_docs.py: sha256:d1e158d2bb1f973958dade28dce6abd943df169700e57828850045f821efd8a0
+    .agents/skills/work-on-gh-issues/SKILL.md: sha256:5ca4ae82b103cb227d98e2e2f0d1f20940061863cfa6fbbf98500dea7f804f5f
+    .agents/skills/work-on-gh-issues/scripts/list_issues.py: sha256:209a25da96cb36d47b51334ba22338701085324f1d834ce82d56aa015e86c725
+  content_hash: sha256:5038da229708b5da6d8d96538cf1cabb65556cc0dc65fa4cb3c65b3860b98879
+  declared_license: MIT
+deployments:
+- kind: project-relative
+  target: codex
+  value: .agents/skills/collaborate-cross-repos
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/collaborate-cross-repos/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: sha256:9ce3955a4393eabb9520ed8e567216dcaabc46018fae29cf3a868c31b20402ca
+- kind: project-relative
+  target: codex
+  value: .agents/skills/use-apm
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/use-apm/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: sha256:4d6f0e2ba5a004249d40420b015db2a6e675dd933cd41aa41c181840847433da
+- kind: project-relative
+  target: codex
+  value: .agents/skills/use-cached-docs
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/use-cached-docs/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: sha256:adfa60831604ee4e90270eceaf1c2af3d5cd39c8c4723388c99c756308d599bb
+- kind: project-relative
+  target: codex
+  value: .agents/skills/use-cached-docs/cached-docs.yml
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: sha256:919a4ba9cd6d392dfbac636d4cd63fe51e86194c54d2e21ca8df40773cc782f3
+- kind: project-relative
+  target: codex
+  value: .agents/skills/use-cached-docs/scripts/hydrate_cached_docs.py
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: sha256:d1e158d2bb1f973958dade28dce6abd943df169700e57828850045f821efd8a0
+- kind: project-relative
+  target: codex
+  value: .agents/skills/work-on-gh-issues
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: null
+- kind: project-relative
+  target: codex
+  value: .agents/skills/work-on-gh-issues/SKILL.md
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: sha256:5ca4ae82b103cb227d98e2e2f0d1f20940061863cfa6fbbf98500dea7f804f5f
+- kind: project-relative
+  target: codex
+  value: .agents/skills/work-on-gh-issues/scripts/list_issues.py
+  runtime: null
+  scope: project
+  owners:
+  - leverage-works/agent-context/packages/org-meta-bundle
+  active_owner: leverage-works/agent-context/packages/org-meta-bundle
+  content_hash: sha256:209a25da96cb36d47b51334ba22338701085324f1d834ce82d56aa015e86c725

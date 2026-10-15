@@ -1,0 +1,10 @@
+name: terraform-aws-email-forwarding
+version: 0.1.0
+description: Reusable AWS email forwarding module and local acceptance harness
+targets:
+  - codex
+dependencies:
+  apm:
+    - leverage-works/agent-context/packages/org-meta-bundle#v0.4.0
+  mcp: []
+includes: auto

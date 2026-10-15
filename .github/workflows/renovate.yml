@@ -1,0 +1,46 @@
+name: Dependency updates
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+
+jobs:
+  renovate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .node-version
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.13.0"
+          enable-cache: false
+      - name: Install the pinned APM CLI for lockfile updates
+        run: |
+          uv tool install "apm-cli==$(make --no-print-directory apm-version)"
+          echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
+      - name: Run Renovate with GitHub-only access
+        env:
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          RENOVATE_REPOSITORIES: leverage-works/terraform-aws-email-forwarding
+          RENOVATE_AUTODISCOVER: "false"
+          RENOVATE_ONBOARDING: "false"
+          RENOVATE_REQUIRE_CONFIG: required
+          RENOVATE_BINARY_SOURCE: global
+          LOG_LEVEL: info
+        run: |
+          test -n "$RENOVATE_TOKEN" || { echo 'Configure the GitHub-only RENOVATE_TOKEN described in docs/development.md.' >&2; exit 1; }
+          make renovate-run
