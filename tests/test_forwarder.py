@@ -88,6 +88,58 @@ class ForwarderTests(unittest.TestCase):
             f.process(self.record(), self.config(), s3, ses, table)
         ses.send_email.assert_not_called()
 
+    def test_failure_diagnostics_report_stage_without_private_error_details(self):
+        for stage, code in [("read_message", "AccessDenied"), ("send_email", "MessageRejected"), ("record_delivery", "ValidationException")]:
+            with self.subTest(stage=stage):
+                s3, ses, table = Mock(), Mock(), Mock()
+                s3.get_object.return_value = {"Body": io.BytesIO(self.message().as_bytes())}
+                ses.send_email.return_value = {"MessageId": "sent-id"}
+                error = Exception("private@example.net secret body")
+                error.response = {"Error": {"Code": code, "Message": "private@example.net"}}
+                target = {"read_message": s3.get_object, "send_email": ses.send_email, "record_delivery": table.update_item}[stage]
+                target.side_effect = error
+                with self.assertRaises(RuntimeError) as caught:
+                    f.process(self.record(), self.config(), s3, ses, table)
+                self.assertIn("stage=" + stage, str(caught.exception))
+                self.assertIn("code=" + code, str(caught.exception))
+                self.assertNotIn("private", str(caught.exception))
+
+    def test_authorization_diagnostics_classify_without_exposing_resources(self):
+        for resource, label in [
+            ("identity/recipient@example.org", "sender_address"),
+            ("identity/example.org", "sender_domain"),
+            ("identity/inbox@example.net", "destination_address"),
+            ("configuration-set/signal", "configuration_set"),
+            ("identity/private@example.com", "other_ses_resource"),
+        ]:
+            response = {"Error": {"Message": (
+                'not authorized to perform ses:SendRawEmail on resource "'
+                'arn:aws:ses:eu-west-2:000000000000:' + resource +
+                '" because no identity-based policy allows it; secret body')},
+                "ResponseMetadata": {"RequestId": "12345678-1234-1234-1234-123456789abc"}}
+            result = f.authorization_diagnostic(response, self.config())
+            self.assertIn("resource=" + label, result)
+            self.assertIn("action=SendRawEmail", result)
+            self.assertIn("reason=missing_identity_allow", result)
+            for private in ("@", "arn:", "secret", "000000000000"):
+                self.assertNotIn(private, result)
+
+    def test_authorization_diagnostics_reject_arbitrary_metadata(self):
+        result = f.authorization_diagnostic({"Error": {"Message": "private@example.net"},
+            "ResponseMetadata": {"RequestId": "private@example.net"}}, self.config())
+        self.assertIn("aws_request_id=unavailable", result)
+        self.assertNotIn("private", result)
+        self.assertIn("reason=unknown", result)
+
+    def test_untrusted_error_codes_are_not_logged(self):
+        s3, ses, table = Mock(), Mock(), Mock()
+        error = Exception("private data")
+        error.response = {"Error": {"Code": "private@example.net"}}
+        s3.get_object.side_effect = error
+        with self.assertRaisesRegex(RuntimeError, "code=Unclassified") as caught:
+            f.process(self.record(), self.config(), s3, ses, table)
+        self.assertNotIn("private", str(caught.exception))
+
     def test_send_failure_does_not_record_success_or_expose_sdk_error(self):
         s3, ses, table = Mock(), Mock(), Mock()
         s3.get_object.return_value = {"Body": io.BytesIO(self.message().as_bytes())}

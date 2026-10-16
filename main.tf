@@ -2,11 +2,13 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 data "aws_partition" "current" {}
 locals {
-  account      = data.aws_caller_identity.current.account_id
-  region       = data.aws_region.current.region
-  partition    = data.aws_partition.current.partition
-  rule_arn     = "arn:${local.partition}:ses:${local.region}:${local.account}:receipt-rule-set/${var.receipt_rule_set_name}:receipt-rule/${var.name}"
-  identity_arn = "arn:${local.partition}:ses:${local.region}:${local.account}:identity/${var.domain}"
+  account   = data.aws_caller_identity.current.account_id
+  region    = data.aws_region.current.region
+  partition = data.aws_partition.current.partition
+  rule_arn  = "arn:${local.partition}:ses:${local.region}:${local.account}:receipt-rule-set/${var.receipt_rule_set_name}:receipt-rule/${var.name}"
+  # SES can authorize the verified destination identity when sending in sandbox.
+  destination_identity_arn = "arn:${local.partition}:ses:${local.region}:${local.account}:identity/${var.forward_to}"
+  identity_arn             = "arn:${local.partition}:ses:${local.region}:${local.account}:identity/${var.domain}"
 }
 resource "aws_ses_domain_identity" "domain" { domain = var.domain }
 resource "aws_ses_domain_dkim" "domain" { domain = var.domain }
@@ -89,7 +91,7 @@ resource "aws_iam_role_policy" "forwarder" {
     { Effect = "Allow", Action = ["s3:GetObject"], Resource = "${aws_s3_bucket.raw.arn}/incoming/*" },
     { Effect = "Allow", Action = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem"], Resource = aws_dynamodb_table.dedup.arn },
     { Effect = "Allow", Action = ["sqs:SendMessage"], Resource = aws_sqs_queue.failures.arn },
-    { Effect = "Allow", Action = ["ses:SendEmail", "ses:SendRawEmail"], Resource = [local.identity_arn, aws_sesv2_configuration_set.forwarder.arn], Condition = { StringEquals = { "ses:FromAddress" = var.forward_from }, "ForAllValues:StringEquals" = { "ses:Recipients" = [var.forward_to] } } }
+    { Effect = "Allow", Action = ["ses:SendEmail", "ses:SendRawEmail"], Resource = [local.identity_arn, local.destination_identity_arn, aws_sesv2_configuration_set.forwarder.arn], Condition = { StringEquals = { "ses:FromAddress" = var.forward_from }, "ForAllValues:StringEquals" = { "ses:Recipients" = [var.forward_to] } } }
   ] })
 }
 data "archive_file" "forwarder" {

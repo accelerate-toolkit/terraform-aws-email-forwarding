@@ -13,7 +13,7 @@ hooks and `core.hooksPath` are preserved. Where a hook already exists, integrate
 
 ## Renovate
 
-The public shared preset is `github>leverage-works/renovate-config`. This repository
+The public shared preset is `github>accelerate-toolkit/renovate-config`. This repository
 keeps only its local scheduling/toolchain rules. Automerge includes major updates,
 but waits for module checks. CI has read-only GitHub permissions and no AWS access;
 merging never applies infrastructure or sends test mail. The example directory is
@@ -62,3 +62,60 @@ GitHub-dependent version lookup warns that a token is required; authenticated
 lookup, runner execution and automerge are not yet verified. The module remains
 pinned to published org-meta-bundle v0.4.0; newer shared onboarding guidance being
 prepared in agent-context requires its own release before consumer adoption.
+
+
+## Sandbox destination authorization
+
+During a live sandbox test, SES v2 `SendEmail` with raw MIME returned
+`AccessDeniedException` for `ses:SendRawEmail` on the verified **destination email
+identity**. The Lambda policy already covered the sender domain and configuration
+set, but omitted that destination resource.
+
+The applied fix adds the exact destination identity ARN to the send policy,
+retaining the exact `ses:FromAddress` and `ses:Recipients` conditions. Fresh
+messages were successfully forwarded afterward; see the results below.
+
+Distinguish the documented requirement from the observed behavior:
+
+- AWS [requires verified recipients in the sandbox](https://docs.aws.amazon.com/ses/latest/dg/verify-addresses-and-domains.html).
+  Outside the sandbox, recipients do not need SES identities.
+- The destination-resource authorization check was observed in this sandbox test.
+  Its attribution specifically to sandbox mode is an inference, not a confirmed
+  general AWS rule. Do not describe destination identity ARNs as universally
+  required, or assume production access will necessarily remove this check.
+- `ses:Recipients` is our explicit restriction on where the forwarder can send.
+  It is separate from identity verification and resource authorization, and
+  remains useful in both sandbox and production mode.
+
+Fresh-message delivery verified this narrow policy change in the sandbox.
+Reassess this permission when testing outside the sandbox;
+record evidence before removing it or making broader claims. Keep real account,
+domain, mailbox and request details in private test artifacts.
+
+
+## Live verification results
+
+Manual sandbox testing on 2026-10-16 confirmed delivery through SES receipt,
+S3 storage, Lambda forwarding and SES outbound delivery to an external inbox.
+The simple-message attempt had a successful Lambda invocation and a `sent`
+ledger entry with an SES message ID; the human operator confirmed inbox receipt.
+A subsequent multipart test was received and its supplied MIME source reviewed.
+Only generic results are recorded here; actual addresses, account identifiers,
+headers, message IDs and deployment configuration remain private.
+
+| Check | Evidence and result |
+| --- | --- |
+| Authentication | Receiving-mailbox headers report SPF, DKIM and DMARC pass. |
+| Unicode | Accented characters, currency symbols and a check mark appear in the received text and HTML MIME parts. |
+| HTML | Bold, italic, list and link markup are present in received MIME. |
+| Inline image | HTML Content-ID reference matches the image part; the human operator confirmed the image displays. The pasted source omitted image bytes, so no byte comparison was performed. |
+| Text attachment | Received MIME contains the synthetic fixture attachment and expected decoded text. |
+| Reply routing | Reply-To contains the original sender; an actual reply was not sent as part of this test. |
+| Failure alerts | The human operator confirmed receipt of Lambda-error and pending-failure alarm emails during the earlier failed attempts. |
+
+This was a manual smoke test, not a completed automated harness verification.
+Image/attachment hash comparison, PDF delivery, size limits, recovery/replay and
+ongoing end-to-end canary coverage remain unverified in the live environment.
+The earlier failed messages were retained, not replayed or deleted. Raw-message
+expiry remains disabled. Sandbox success does not establish behavior outside
+sandbox or readiness to cut over production mail.

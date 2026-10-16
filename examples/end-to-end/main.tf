@@ -29,7 +29,9 @@ resource "aws_sns_topic" "alerts" { name = "${var.resource_prefix}-alerts" }
 resource "aws_sns_topic_policy" "alerts" {
   arn = aws_sns_topic.alerts.arn
   policy = jsonencode({ Version = "2012-10-17", Statement = [
-    { Sid = "Owner", Effect = "Allow", Principal = { AWS = "arn:${data.aws_partition.current.partition}:iam::${var.account_id}:root" }, Action = "sns:*", Resource = aws_sns_topic.alerts.arn },
+    # SNS topic policies accept only topic-scoped actions, not sns:*.
+    # Preserve the standard owner topic operations explicitly.
+    { Sid = "Owner", Effect = "Allow", Principal = { AWS = "arn:${data.aws_partition.current.partition}:iam::${var.account_id}:root" }, Action = ["sns:GetTopicAttributes", "sns:SetTopicAttributes", "sns:AddPermission", "sns:RemovePermission", "sns:DeleteTopic", "sns:Subscribe", "sns:ListSubscriptionsByTopic", "sns:Publish"], Resource = aws_sns_topic.alerts.arn },
     { Sid = "SES", Effect = "Allow", Principal = { Service = "ses.amazonaws.com" }, Action = "sns:Publish", Resource = aws_sns_topic.alerts.arn, Condition = { StringEquals = { "AWS:SourceAccount" = var.account_id, "AWS:SourceArn" = "arn:${data.aws_partition.current.partition}:ses:${var.region}:${var.account_id}:configuration-set/${var.resource_prefix}" } } },
     { Sid = "Alarms", Effect = "Allow", Principal = { Service = "cloudwatch.amazonaws.com" }, Action = "sns:Publish", Resource = aws_sns_topic.alerts.arn, Condition = { StringEquals = { "AWS:SourceAccount" = var.account_id }, ArnLike = { "AWS:SourceArn" = "arn:${data.aws_partition.current.partition}:cloudwatch:${var.region}:${var.account_id}:alarm:${var.resource_prefix}-*" } } }
   ] })

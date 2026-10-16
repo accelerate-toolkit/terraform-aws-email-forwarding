@@ -35,7 +35,7 @@ jobs:
         env:
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
-          RENOVATE_REPOSITORIES: leverage-works/terraform-aws-email-forwarding
+          RENOVATE_REPOSITORIES: accelerate-toolkit/terraform-aws-email-forwarding
           RENOVATE_AUTODISCOVER: "false"
           RENOVATE_ONBOARDING: "false"
           RENOVATE_REQUIRE_CONFIG: required

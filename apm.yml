@@ -5,6 +5,6 @@ targets:
   - codex
 dependencies:
   apm:
-    - leverage-works/agent-context/packages/org-meta-bundle#v0.4.0
+    - accelerate-toolkit/agent-context/packages/org-meta-bundle#v0.4.0
   mcp: []
 includes: auto

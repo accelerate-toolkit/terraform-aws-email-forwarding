@@ -1,8 +1,10 @@
 # terraform-aws-email-forwarding
 
-Public, unreleased implementation candidate for `leverage-works/terraform-aws-email-forwarding`.
-No release tag or live deployment exists yet. Terraform and the Lambda
-implementation will be versioned together; project roots pin immutable releases.
+Public, unreleased implementation candidate for `accelerate-toolkit/terraform-aws-email-forwarding`.
+A live sandbox deployment has passed a manual forwarding test; no release tag
+has been published. See [verification results](docs/development.md#live-verification-results)
+for evidence and remaining gaps. Terraform and the Lambda implementation will be
+versioned together; project roots pin immutable releases.
 
 One module instance owns forwarding for one domain and one recipient. It owns the
 SES domain identity/DKIM, recipient rule, private raw-message bucket, Lambda,
@@ -51,7 +53,9 @@ Outputs include MX, domain-verification TXT and DKIM CNAME records. Publish
 verification/DKIM first. Publish MX only after the complete delivery path is ready;
 outputs do not automatically alter DNS. Existing SPF/DMARC remain separately owned.
 In the SES sandbox, verify the destination too, or obtain production access before
-attempting delivery to unverified recipients.
+attempting delivery to unverified recipients. See the
+[sandbox authorization observation](docs/development.md#sandbox-destination-authorization)
+for why the send policy also includes the exact destination identity ARN.
 
 `raw_retention_days = 30` requires `observability_verified = true`. That assertion
 must follow real alert/recovery tests; Terraform cannot prove an inbox receives
@@ -62,6 +66,13 @@ still require an independently scheduled canary. Do not enable expiry or cut ove
 live mail until that gap is addressed.
 
 ## Recovery
+
+Authorization failures include a fixed diagnostic category for the denied SES
+action/resource and a validated AWS request ID, when supplied by AWS. These are
+clues, not proof of the effective policy decision; unknown formats remain
+`unknown`. Raw SDK error messages, resource ARNs and mailbox addresses are never
+logged. Use a fresh test message after deploying diagnostic changes; existing
+unfinished ledger entries deliberately prevent automatic replay.
 
 1. Inspect the failure queue without deleting it; locate the SES message ID in its
    invocation payload, the raw S3 object `incoming/<messageId>` and ledger record.

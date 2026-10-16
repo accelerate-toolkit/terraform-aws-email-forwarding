@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "github>leverage-works/renovate-config"
+    "github>accelerate-toolkit/renovate-config"
   ],
   "timezone": "Europe/London",
   "schedule": [
