@@ -1,9 +1,10 @@
 # terraform-aws-email-forwarding
 
-Public, unreleased implementation candidate for `accelerate-toolkit/terraform-aws-email-forwarding`.
-A live sandbox deployment has passed a manual forwarding test; no release tag
-has been published. See [verification results](docs/development.md#live-verification-results)
-for evidence and remaining gaps. Terraform and the Lambda implementation will be
+Public, versioned Terraform module for `accelerate-toolkit/terraform-aws-email-forwarding`.
+The first source release, [v0.1.0](https://github.com/accelerate-toolkit/terraform-aws-email-forwarding/releases/tag/v0.1.0),
+has passed independent consumer validation. A live sandbox deployment has passed
+a manual forwarding test. See [verification results](docs/development.md#live-verification-results)
+for evidence and remaining gaps. Terraform and the Lambda implementation are
 versioned together; project roots pin immutable releases.
 
 One module instance owns forwarding for one domain and one recipient. It owns the

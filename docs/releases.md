@@ -11,7 +11,7 @@ Terraform versions, resource addresses and delivery/recovery behaviour. Removing
 or incompatibly changing these requires a breaking marker and migration notes.
 Conventional Commits determine the highest bump: feat = minor, fix/perf = patch,
 breaking marker/footer = major, including during 0.x. Docs/chore alone do not
-release. With no tags the baseline is 0.0.0; current history previews 0.1.0.
+release. With no tags the baseline is 0.0.0. The first published version is 0.1.0.
 
 ## Local preview
 
@@ -56,8 +56,7 @@ uv run --script scripts/release/release.py publish --repo "$GITHUB_REPOSITORY"
 
 The command refuses non-main/non-Actions contexts and dirty checkouts. Tests use
 disposable Git repositories and mocked GitHub writes for version precedence,
-notes, retry recovery and conflicting tags. Actual GitHub release publication has
-not yet been exercised. Correct released defects with a new version.
+notes, retry recovery and conflicting tags. Release v0.1.0 was published successfully on 2026-10-16. Correct released defects with a new version.
 
 ## Published consumer verification
 
@@ -75,5 +74,6 @@ uv run --script scripts/release/consumer.py --repo OWNER/REPO --version X.Y.Z
 If this check fails, the release is already published. Retry for a transient
 failure; correct source defects with a new version. A no-new-release retry still
 verifies the latest published version. This verifies package consumption, not
-email delivery. Actual published-consumer execution awaits the first release;
-only offline orchestration tests have run so far.
+email delivery. The published v0.1.0 consumer check passed on 2026-10-16 in
+[Release run 38927063716](https://github.com/accelerate-toolkit/terraform-aws-email-forwarding/actions/runs/38927063716).
+Live email rollout checks remain separate.
