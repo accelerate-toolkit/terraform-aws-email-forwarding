@@ -91,12 +91,15 @@ unfinished ledger entries deliberately prevent automatic replay.
 
 ## Local checks and release gates
 
+Release automation follows the dedicated main-branch [release workflow](docs/releases.md).
+Source publication and production rollout are separate decisions.
+`make release-plan` previews a version without publishing.
+
 Run `make`, then `make check`. Tests use synthetic MIME messages and mocked AWS
 clients; validation runs in containers without host credentials or state.
 No Make target applies infrastructure.
 
-Before first release/consumer rollout: complete GitHub activation and
-release automation, verify Terraform plans in the project root, supply the alert
+Before production consumer rollout: verify Terraform plans in the project root, supply the alert
 topic/policy, add a canary, run sandbox delivery/replay/bounce tests, and review
 IAM with AWS. None of those live checks have been claimed as passed. A local
 candidate is not a production-ready release. No customer messages were sent.

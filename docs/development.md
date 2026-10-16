@@ -15,7 +15,8 @@ hooks and `core.hooksPath` are preserved. Where a hook already exists, integrate
 
 The public shared preset is `github>accelerate-toolkit/renovate-config`. This repository
 keeps only its local scheduling/toolchain rules. Automerge includes major updates,
-but waits for module checks. CI has read-only GitHub permissions and no AWS access;
+but waits for module checks. Checks have read-only GitHub permissions; the dedicated source-release job
+has contents-write permission and no AWS access;
 merging never applies infrastructure or sends test mail. The example directory is
 explicitly included in dependency extraction, overriding the shared preset's
 example exclusion. Private configuration and build outputs remain excluded.
@@ -39,7 +40,7 @@ complete:
    token for this runner needs access to this repository, Contents, Pull requests,
    Issues and Workflows read/write, plus Commit statuses read for check evaluation.
    Never print or commit its value. Record its expiry privately and arrange rotation.
-3. Keep the Actions `GITHUB_TOKEN` read-only; use the separate bot identity for
+3. Keep the dependency/check jobs’ Actions `GITHUB_TOKEN` read-only; use the separate bot identity for
    dependency branches/PRs. No AWS credentials, OIDC deployment role or state access.
 4. Confirm a successful Module checks run and a successful dependency runner.
    Inspect extraction and a real dependency PR, APM lock update where relevant,
@@ -49,9 +50,11 @@ Repository-level secrets also work when the GitHub plan prevents organization
 secrets from being used by private repositories. Do not assume org-secret access
 or require a paid-plan change merely to onboard a repository.
 
-Current status: local APM/config/runner/checks prepared. GitHub repository creation,
-publication, bot secret, live runner and actual dependency PR/merge verification
-remain pending. No token was inspected or changed during local onboarding.
+Current status: repository publication, Module checks and an authenticated
+Renovate run are verified. The Dependency Dashboard exists; actual dependency
+PR/merge behaviour remains unverified. The runner cannot currently read
+vulnerability alerts. Dedicated source-release automation is prepared;
+see [releases](releases.md).
 
 
 Local verification completed: frozen APM install/compile and advisory hook tests

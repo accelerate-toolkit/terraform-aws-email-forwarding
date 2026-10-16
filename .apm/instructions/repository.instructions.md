@@ -20,7 +20,10 @@ The human operator executes all real Terraform applies, imports, destroys and
 state mutations. The assistant may prepare configuration, run offline tests/plans
 and read-only verification. Use examples/end-to-end/tf.sh for deployment, not Make
 wrappers. No AWS credentials, roles or deployment paths belong in GitHub Actions.
-CI runs credential-free checks only. Renovate automerge does not apply Terraform.
+CI checks receive no AWS credentials. A dedicated main-branch release workflow may
+publish immutable source releases with GitHub contents-write permission after
+checks pass; source publication is separate from production adoption, as documented
+in docs/releases.md. Renovate automerge does not apply Terraform.
 
 Use APM without ontologies. Edit .apm sources and compile AGENTS.md rather than
 editing generated instructions. Keep manifests/lockfiles, ignore downloaded tools

@@ -12,7 +12,7 @@ fmt: ## Format Terraform.
 	docker run --rm --network none -v "$(CURDIR):/work" -w /work hashicorp/terraform:$(shell cat .terraform-version) fmt -recursive
 validate: ## Validate module/example without AWS credentials.
 	bash scripts/validate.sh
-check: apm-check test harness-test privacy-check validate hooks-test renovate-check ## Run credential-free module checks.
+check: release-test apm-check test harness-test privacy-check validate hooks-test renovate-check ## Run credential-free module checks.
 
 .PHONY: harness-test privacy-check
 harness-test: ## Test private configuration and manual verification.
@@ -48,3 +48,9 @@ renovate-run: ## Run the dependency bot with GitHub-only credentials.
 .PHONY: apm-check
 apm-check: ## Preview locked skill installation without changing the workspace.
 	$(APM) install --target codex --frozen --dry-run
+
+.PHONY: release-plan release-test
+release-plan: ## Preview the next source version without publishing.
+	uv run --script scripts/release/release.py plan
+release-test: ## Test versioning and publication recovery offline.
+	uv run --script scripts/release/test_release.py -v

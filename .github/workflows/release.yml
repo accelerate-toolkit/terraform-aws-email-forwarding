@@ -1,0 +1,38 @@
+name: Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: module-source-release
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: "0.13.0"
+          enable-cache: false
+      - name: Verify release source
+        run: make check
+      - name: Publish or resume immutable source release
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run --script scripts/release/release.py publish --repo "$GITHUB_REPOSITORY"
+      - name: Verify published module as an independent consumer
+        if: steps.publish.outputs.version != ''
+        env:
+          RELEASE_VERSION: ${{ steps.publish.outputs.version }}
+        run: uv run --script scripts/release/consumer.py --repo "$GITHUB_REPOSITORY" --version "$RELEASE_VERSION"
