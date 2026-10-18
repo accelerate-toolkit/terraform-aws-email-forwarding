@@ -2,9 +2,9 @@ name: Dependency updates
 
 on:
   schedule:
-    # Daily at 02:17 UTC, inside Monday's London update window year-round.
-    # Completed checks may wait until the next daily run for automerge.
-    - cron: "17 2 * * *"
+    # Mondays at 02:17 UTC, inside Monday's London update window year-round.
+    # Completed checks may wait until the next weekly run for automerge.
+    - cron: "17 2 * * 1"
   workflow_dispatch:
 
 permissions:
