@@ -21,7 +21,7 @@ merging never applies infrastructure or sends test mail. The example directory i
 explicitly included in dependency extraction, overriding the shared preset's
 example exclusion. Private configuration and build outputs remain excluded.
 
-The hourly/manual runner uses pinned Node, uv, APM and Renovate. It installs APM
+The daily/manual runner uses pinned Node, uv, APM and Renovate. It installs APM
 so dependency updates can regenerate `apm.lock.yaml`. Monday scheduling governs
 new update creation. Renovate covers module/example Terraform providers, Terraform
 CLI, GitHub Actions, Node, uv/APM/Renovate pins and versioned APM packages. Run
