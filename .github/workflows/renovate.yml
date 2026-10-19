@@ -27,7 +27,7 @@ jobs:
           node-version-file: .node-version
       - uses: astral-sh/setup-uv@v10.3.0
         with:
-          version: "0.13.0"
+          version: "0.13.1"
           enable-cache: false
       - name: Install the pinned APM CLI for lockfile updates
         run: |
