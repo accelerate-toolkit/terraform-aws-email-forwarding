@@ -8,17 +8,19 @@
     "before 6am on monday"
   ],
   "automerge": true,
-  "prConcurrentLimit": 3,
+  "prConcurrentLimit": 1,
   "lockFileMaintenance": {
-    "enabled": true
+    "enabled": false
   },
   "packageRules": [
     {
-      "matchManagers": [
-        "terraform-version",
-        "terraform"
+      "matchPackageNames": [
+        "*"
       ],
-      "groupName": "terraform toolchain"
+      "groupName": "all dependencies",
+      "groupSlug": "all-dependencies",
+      "separateMajorMinor": false,
+      "separateMinorPatch": false
     }
   ],
   "pep723": {

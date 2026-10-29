@@ -14,7 +14,11 @@ hooks and `core.hooksPath` are preserved. Where a hook already exists, integrate
 ## Renovate
 
 The public shared preset is `github>accelerate-toolkit/renovate-config`. This repository
-keeps only its local scheduling/toolchain rules. Automerge includes major updates,
+keeps its local scheduling and dependency grouping rules. All dependency version
+updates, including major updates, share one PR, overriding the preset's per-manager
+groups. Standalone lock-file maintenance is disabled because Renovate cannot combine
+it with version updates; lockfiles still update alongside dependency changes.
+The normal dependency PR concurrency limit is one. Automerge includes major updates,
 but waits for module checks. Checks have read-only GitHub permissions; the dedicated source-release job
 has contents-write permission and no AWS access;
 merging never applies infrastructure or sends test mail. The example directory is
@@ -22,8 +26,11 @@ explicitly included in dependency extraction, overriding the shared preset's
 example exclusion. Private configuration and build outputs remain excluded.
 
 The weekly/manual runner uses pinned Node, uv, APM and Renovate. It installs APM
-so dependency updates can regenerate `apm.lock.yaml`. Monday scheduling governs
-new update creation. Renovate covers module/example Terraform providers, Terraform
+so dependency updates can regenerate `apm.lock.yaml`. The runner starts Mondays at
+02:17 UTC (02:17 London in winter, 03:17 in summer), subject to GitHub Actions
+scheduling delays. New update creation is allowed before 06:00 Monday in
+`Europe/London`. Manual runs still respect that window. Completed checks may wait
+until the next runner invocation for automerge. Renovate covers module/example Terraform providers, Terraform
 CLI, GitHub Actions, Node, uv/APM/Renovate pins and versioned APM packages. Run
 `make renovate-check` and `make renovate-extract` locally. Extraction mounts only
 public dependency inputs; it receives no token, private test files or AWS credentials.
