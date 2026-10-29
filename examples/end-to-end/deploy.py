@@ -15,20 +15,38 @@ import sys
 import config as settings
 
 
+class SetupError(RuntimeError):
+    """A fixed diagnostic safe to display without private subprocess output."""
+
+
 def aws(arguments, config, env):
-    result = subprocess.run(['aws', *arguments, '--profile', config['aws_profile'],
-                             '--region', config['region'], '--output', 'json', '--no-cli-pager'],
-                            env=env, capture_output=True, text=True, timeout=60)
+    try:
+        result = subprocess.run(['aws', *arguments, '--profile', config['aws_profile'],
+                                 '--region', config['region'], '--output', 'json', '--no-cli-pager'],
+                                env=env, capture_output=True, text=True, timeout=60)
+    except FileNotFoundError:
+        raise SetupError('AWS CLI was not found on PATH. Install it or correct your terminal PATH.') from None
+    except subprocess.TimeoutExpired:
+        raise SetupError('AWS identity/service check timed out. Check network access and the configured SSO session.') from None
     if result.returncode:
-        raise RuntimeError('AWS read failed; check the configured SSO session and permissions.')
-    return json.loads(result.stdout or '{}')
+        detail = result.stderr.lower()
+        if any(marker in detail for marker in ['sso session', 'sso token', 'token has expired', 'expiredtoken', 'error loading sso token']):
+            raise SetupError('AWS SSO session is missing or expired. Run aws sso login --profile with the aws_profile from config.local.json, then retry.')
+        if 'could not be found' in detail and 'profile' in detail:
+            raise SetupError('Configured AWS profile was not found. Check aws_profile in config.local.json.')
+        stage = 'Caller identity check' if arguments[:2] == ['sts', 'get-caller-identity'] else 'SES active-rule-set check'
+        raise SetupError(stage + ' failed. Check the configured SSO session, network and read permissions.')
+    try:
+        return json.loads(result.stdout or '{}')
+    except ValueError:
+        raise SetupError('AWS CLI returned invalid JSON during a setup check.') from None
 
 
 def verify_caller(caller, config):
     prefix = f"arn:aws:sts::{config['account_id']}:assumed-role/{config['role_name_prefix']}"
     arn = caller.get('Arn', '')
     if caller.get('Account') != config['account_id'] or not arn.startswith(prefix) or '/' not in arn[len(prefix):]:
-        raise RuntimeError('Caller does not match the configured account and SSO role.')
+        raise SetupError('Caller does not match the configured account and SSO role.')
 
 
 def prepare(config):
@@ -48,7 +66,7 @@ def prepare(config):
 
 def run(config_path, args):
     if os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS'):
-        raise RuntimeError('Live test deployments are human-operated locally; no CI AWS access.')
+        raise SetupError('Live test deployments are human-operated locally; no CI AWS access.')
     if not args or any(arg.startswith('-chdir') for arg in args):
         raise ValueError('Pass a Terraform command without overriding the root directory.')
     config = settings.load(config_path, live=True)
@@ -58,13 +76,17 @@ def run(config_path, args):
     if args[0] in {'plan', 'apply'}:
         active = aws(['ses', 'describe-active-receipt-rule-set'], config, env)
         if active.get('Metadata', {}).get('Name') != config['receipt_rule_set_name']:
-            raise RuntimeError('The configured receipt rule set must already be active in this account/region.')
+            raise SetupError('The configured receipt rule set must already be active in this account/region.')
     binary = shutil.which(config['terraform_binary'])
     if not binary:
-        raise RuntimeError('Install the pinned Terraform version or set terraform_binary in the private config.')
-    version = subprocess.run([binary, 'version', '-json'], env=env, capture_output=True, text=True, check=True)
-    if json.loads(version.stdout)['terraform_version'] != (settings.ROOT / '.terraform-version').read_text().strip():
-        raise RuntimeError('Terraform binary does not match .terraform-version.')
+        raise SetupError('Install the pinned Terraform version or set terraform_binary in the private config.')
+    try:
+        version = subprocess.run([binary, 'version', '-json'], env=env, capture_output=True, text=True, check=True)
+        actual_version = json.loads(version.stdout)['terraform_version']
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError):
+        raise SetupError('Configured Terraform binary could not report its version. Check executable permissions and local OS security prompts.') from None
+    if actual_version != (settings.ROOT / '.terraform-version').read_text().strip():
+        raise SetupError('Terraform binary does not match .terraform-version.')
     os.umask(0o077)
     variables, backend = prepare(config)
     env.update(AWS_PROFILE=config['aws_profile'], AWS_REGION=config['region'], AWS_DEFAULT_REGION=config['region'],
@@ -86,6 +108,9 @@ def main():
     args = parser.parse_args()
     try:
         run(args.config, args.terraform_args)
+    except SetupError as error:
+        print('Setup failed: ' + str(error), file=sys.stderr)
+        return 1
     except (ValueError, RuntimeError, OSError, subprocess.SubprocessError):
         # Avoid echoing subprocess command/output or malformed private values.
         print('Setup failed. Check private config, named SSO login, active rule set and pinned Terraform. No automatic fallback.', file=sys.stderr)

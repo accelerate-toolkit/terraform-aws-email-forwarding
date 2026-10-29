@@ -135,6 +135,22 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(privacy.reasons(Path('example.json'), b'"tester@example.org"'), [])
         self.assertEqual(privacy.reasons(Path('apm.lock.yaml'), ('hash: a' + '1' * 12 + 'b').encode()), [])
 
+    def test_setup_diagnostics_classify_aws_failures_without_private_output(self):
+        for detail, expected in [
+            ('Error loading SSO Token for private@example.net', 'SSO session is missing or expired'),
+            ('The config profile private@example.net could not be found', 'profile was not found'),
+            ('AccessDenied private@example.net', 'Caller identity check failed'),
+        ]:
+            with patch.object(deploy.subprocess, 'run', return_value=Mock(returncode=1, stderr=detail)):
+                with self.assertRaises(deploy.SetupError) as caught:
+                    deploy.aws(['sts', 'get-caller-identity'], self.config, {})
+                self.assertIn(expected, str(caught.exception))
+                self.assertNotIn('private@example.net', str(caught.exception))
+        with patch.object(deploy.subprocess, 'run', side_effect=FileNotFoundError('private path')):
+            with self.assertRaisesRegex(deploy.SetupError, 'AWS CLI was not found'):
+                deploy.aws(['sts', 'get-caller-identity'], self.config, {})
+
+
     def test_two_inboxes_and_optional_fault_are_validated(self):
         source = self.path / 'config.local.json'
         for changes in [dict(destination_b=self.config['destination_a']),

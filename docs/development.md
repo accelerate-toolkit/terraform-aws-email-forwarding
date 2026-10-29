@@ -131,3 +131,19 @@ ongoing end-to-end canary coverage remain unverified in the live environment.
 The earlier failed messages were retained, not replayed or deleted. Raw-message
 expiry remains disabled. Sandbox success does not establish behavior outside
 sandbox or readiness to cut over production mail.
+
+
+### Pattern-routing smoke test
+
+After the named-rule deployment, the human operator confirmed that one message
+matching overlapping `original-*` rules arrived at both configured destination
+addresses, and a `replacement-*` message arrived at the primary destination.
+The destinations were a base email address and a plus alias in the same mailbox;
+this confirms routing to distinct addresses, not delivery to independent providers.
+
+These were routing-only smoke tests. The original message omitted attachments
+and an inline image, and the replacement message used a simple subject/body.
+The full fixture verifier was not completed. Filtered-recipient behavior, S3
+metadata correlation, Bcc, duplicate/recovery handling and byte-preservation
+checks remain unverified for this live run. Private addresses and run identifiers
+are intentionally omitted.

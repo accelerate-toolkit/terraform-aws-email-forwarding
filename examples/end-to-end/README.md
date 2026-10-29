@@ -67,6 +67,12 @@ rules below, both authorized destinations, S3 metadata read/write access, runtim
 role path/boundary, and no-expiry retention. The optional failure policy must be
 absent during normal tests. No assistant or Make target applies infrastructure.
 
+If setup fails before Terraform starts, the wrapper reports the failing identity,
+SSO, CLI, or Terraform-version check without echoing private service output. For
+an expired/missing SSO session, run `aws sso login --profile <configured-profile>`
+using `aws_profile` from the private config, then retry `./examples/end-to-end/tf.sh init`.
+Do not switch profiles or bypass the account/role checks to get past a failure.
+
 The example deploys these rules; they do not change between run IDs:
 
 | Rule | Local-part patterns | Destination |
