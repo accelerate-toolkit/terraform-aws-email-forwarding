@@ -25,11 +25,13 @@ merging never applies infrastructure or sends test mail. The example directory i
 explicitly included in dependency extraction, overriding the shared preset's
 example exclusion. Private configuration and build outputs remain excluded.
 
-The weekly/manual runner uses pinned Node, uv, APM and Renovate. It installs APM
+The schedule-only weekly runner uses pinned Node, uv, APM and Renovate. It installs APM
 so dependency updates can regenerate `apm.lock.yaml`. The runner starts Mondays at
 02:17 UTC (02:17 London in winter, 03:17 in summer), subject to GitHub Actions
 scheduling delays. New update creation is allowed before 06:00 Monday in
-`Europe/London`. Manual runs still respect that window. Completed checks may wait
+`Europe/London`. The workflow has no push, pull-request or manual dispatch trigger.
+Commit checks validate Renovate configuration without running the dependency bot.
+Completed checks may wait
 until the next runner invocation for automerge. Renovate covers module/example Terraform providers, Terraform
 CLI, GitHub Actions, Node, uv/APM/Renovate pins and versioned APM packages. Run
 `make renovate-check` and `make renovate-extract` locally. Extraction mounts only
