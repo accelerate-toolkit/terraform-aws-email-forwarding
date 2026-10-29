@@ -33,8 +33,11 @@ def verify_caller(caller, config):
 
 def prepare(config):
     values = {k: config[k] for k in ['account_id', 'region', 'resource_prefix', 'hosted_zone_id',
-                                    'domain', 'receipt_rule_set_name', 'recipient', 'forward_from',
-                                    'destination', 'alert_email', 'enable_mx']}
+                                    'domain', 'receipt_rule_set_name', 'forward_from',
+                                    'destination_a', 'destination_b', 'alert_email', 'enable_mx']}
+    values.update(runtime_role_path=config.get('runtime_role_path', '/'),
+                  runtime_permissions_boundary_arn=config.get('runtime_permissions_boundary_arn'),
+                  simulate_destination_b_failure=config.get('simulate_destination_b_failure', False))
     variables = settings.BUILD / 'inputs.tfvars.json'
     backend = settings.BUILD / 'backend.tfbackend'
     settings.private_write(variables, json.dumps(values, indent=2) + '\n')

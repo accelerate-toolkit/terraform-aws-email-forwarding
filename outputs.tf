@@ -11,3 +11,14 @@ output "raw_bucket" { value = aws_s3_bucket.raw.id }
 output "failure_queue_url" { value = aws_sqs_queue.failures.url }
 output "delivery_table" { value = aws_dynamodb_table.dedup.name }
 output "function_name" { value = aws_lambda_function.forwarder.function_name }
+
+output "reader_locations" {
+  description = "Consumer-owned reader policies need prefix-scoped ListBucket and GetObject for both prefixes."
+  value = {
+    bucket          = aws_s3_bucket.raw.id
+    bucket_arn      = aws_s3_bucket.raw.arn
+    region          = local.region
+    mime_prefix     = "incoming/"
+    metadata_prefix = "metadata/"
+  }
+}

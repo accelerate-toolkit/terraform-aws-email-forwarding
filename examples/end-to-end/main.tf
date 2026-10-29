@@ -12,9 +12,22 @@ variable "resource_prefix" { type = string }
 variable "hosted_zone_id" { type = string }
 variable "domain" { type = string }
 variable "receipt_rule_set_name" { type = string }
-variable "recipient" { type = string }
 variable "forward_from" { type = string }
-variable "destination" { type = string }
+variable "destination_a" { type = string }
+variable "destination_b" { type = string }
+variable "runtime_role_path" {
+  type    = string
+  default = "/"
+}
+variable "runtime_permissions_boundary_arn" {
+  type    = string
+  default = null
+}
+variable "simulate_destination_b_failure" {
+  description = "Test-only explicit SES deny for inbox B. Human plan/apply required; false for normal runs."
+  type        = bool
+  default     = false
+}
 variable "alert_email" { type = string }
 variable "enable_mx" { type = bool }
 
@@ -42,19 +55,32 @@ resource "aws_sns_topic_subscription" "alerts" {
   endpoint  = var.alert_email
 }
 # A human apply requests verification; the operator must confirm it in the inbox.
-resource "aws_ses_email_identity" "destination" { email = var.destination }
+moved {
+  from = aws_ses_email_identity.destination
+  to   = aws_ses_email_identity.destinations["a"]
+}
+resource "aws_ses_email_identity" "destinations" {
+  for_each = { a = var.destination_a, b = var.destination_b }
+  email    = each.value
+}
 module "forwarding" {
-  source                 = "../.."
-  name                   = var.resource_prefix
-  domain                 = var.domain
-  recipient              = var.recipient
-  forward_from           = var.forward_from
-  forward_to             = var.destination
-  receipt_rule_set_name  = var.receipt_rule_set_name
-  alarm_topic_arn        = aws_sns_topic.alerts.arn
-  raw_retention_days     = null
-  observability_verified = false
-  depends_on             = [aws_sns_topic_policy.alerts]
+  source           = "../.."
+  name             = var.resource_prefix
+  domain           = var.domain
+  recipient_domain = var.domain
+  forwarding_rules = {
+    acceptance = { patterns = ["original-*", "replacement-*"], forward_to = var.destination_a }
+    overlap    = { patterns = ["original-*"], forward_to = var.destination_b }
+    support    = { patterns = ["support"], forward_to = var.destination_a }
+  }
+  runtime_role_path                = var.runtime_role_path
+  runtime_permissions_boundary_arn = var.runtime_permissions_boundary_arn
+  forward_from                     = var.forward_from
+  receipt_rule_set_name            = var.receipt_rule_set_name
+  alarm_topic_arn                  = aws_sns_topic.alerts.arn
+  raw_retention_days               = null
+  observability_verified           = false
+  depends_on                       = [aws_sns_topic_policy.alerts]
 }
 resource "aws_route53_record" "verification" {
   zone_id = var.hosted_zone_id
@@ -92,5 +118,17 @@ output "test_resources" {
     raw_bucket        = module.forwarding.raw_bucket
     failure_queue_url = module.forwarding.failure_queue_url
     delivery_table    = module.forwarding.delivery_table
+    reader_locations  = module.forwarding.reader_locations
   }
+}
+
+# Deliberate, reversible failure for the isolated recovery test. Never used by CI.
+resource "aws_iam_role_policy" "deny_destination_b" {
+  count = var.simulate_destination_b_failure ? 1 : 0
+  name  = "test-deny-destination-b"
+  role  = var.resource_prefix
+  policy = jsonencode({ Version = "2012-10-17", Statement = [
+    { Effect = "Deny", Action = ["ses:SendEmail", "ses:SendRawEmail"], Resource = "*", Condition = { "ForAnyValue:StringEquals" = { "ses:Recipients" = [lower(var.destination_b)] } } }
+  ] })
+  depends_on = [module.forwarding]
 }

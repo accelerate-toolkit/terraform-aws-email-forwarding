@@ -37,7 +37,8 @@ def check(root=ROOT):
     if local.exists():
         config = json.loads(local.read_text())
         fields = ['account_id', 'aws_profile', 'role_name_prefix', 'hosted_zone_id', 'domain',
-                  'recipient', 'forward_from', 'destination', 'test_sender', 'alert_email']
+                  'recipient', 'forward_from', 'destination', 'destination_a', 'destination_b',
+                  'runtime_permissions_boundary_arn', 'test_sender', 'alert_email']
         values = [config.get(k, '') for k in fields]
         values.append(config.get('backend', {}).get('bucket', ''))
         # Incomplete/exemplar local configs are not private identities.

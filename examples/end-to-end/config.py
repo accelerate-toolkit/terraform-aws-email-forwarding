@@ -19,7 +19,7 @@ def load(path=DEFAULT_CONFIG, *, live=False):
         raise ValueError('Configuration must be a JSON object.')
     strings = ['aws_profile', 'account_id', 'role_name_prefix', 'region', 'terraform_binary',
                'resource_prefix', 'hosted_zone_id', 'domain', 'receipt_rule_set_name',
-               'recipient', 'forward_from', 'destination', 'test_sender', 'alert_email']
+               'forward_from', 'destination_a', 'destination_b', 'test_sender', 'alert_email']
     if any(not isinstance(config.get(k), str) or not config[k].strip() or '\n' in config[k] for k in strings):
         raise ValueError('Required configuration strings must be non-empty single-line values.')
     if not re.fullmatch(r'\d{12}', config['account_id']):
@@ -28,10 +28,24 @@ def load(path=DEFAULT_CONFIG, *, live=False):
         raise ValueError('Use a specific AWSReservedSSO permission-set role prefix, ending in _.')
     if not isinstance(config.get('enable_mx'), bool):
         raise ValueError('enable_mx must be an explicit boolean.')
-    if any(not re.fullmatch(r'[^\s@<>]+@[^\s@<>]+', config[k]) for k in ['recipient', 'forward_from', 'destination', 'test_sender', 'alert_email']):
+    if any(not re.fullmatch(r'[^\s@<>]+@[^\s@<>]+', config[k]) for k in ['forward_from', 'destination_a', 'destination_b', 'test_sender', 'alert_email']):
         raise ValueError('Mail settings must be plain email addresses without display names.')
-    if set(config) != set(strings) | {'enable_mx', 'backend'}:
+    optional = {'runtime_role_path', 'runtime_permissions_boundary_arn', 'simulate_destination_b_failure'}
+    if set(config) - optional != set(strings) | {'enable_mx', 'backend'}:
         raise ValueError('Unexpected configuration keys; credentials do not belong in this file.')
+    if config['destination_a'].lower() == config['destination_b'].lower():
+        raise ValueError('Configure two distinct external destination inboxes.')
+    if any(address.lower().endswith('@' + config['domain'].lower())
+           for address in [config['destination_a'], config['destination_b']]):
+        raise ValueError('Destination inboxes must be outside the receiving domain.')
+    if not isinstance(config.setdefault('simulate_destination_b_failure', False), bool):
+        raise ValueError('simulate_destination_b_failure must be boolean.')
+    role_path = config.setdefault('runtime_role_path', '/')
+    boundary = config.setdefault('runtime_permissions_boundary_arn', None)
+    if not isinstance(role_path, str) or not re.fullmatch(r'/([!-~]+/)?', role_path):
+        raise ValueError('Runtime role path must begin and end with /.')
+    if boundary is not None and (not isinstance(boundary, str) or not re.fullmatch(r'arn:aws:iam::[0-9]{12}:policy/[^\s]+', boundary)):
+        raise ValueError('Runtime permissions boundary must be an IAM policy ARN or null.')
     backend = config.get('backend', {})
     if not isinstance(backend, dict) or set(backend) != {'bucket', 'key', 'region'}:
         raise ValueError('Backend accepts only bucket, key and region; use SSO for credentials.')

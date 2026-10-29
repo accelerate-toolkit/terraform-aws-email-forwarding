@@ -3,7 +3,7 @@ APM_VERSION := 0.33.0
 RENOVATE_VERSION := 44.151.0
 APM = UV_TOOL_DIR=$(CURDIR)/build/uv-tools uv tool run --from apm-cli==$(APM_VERSION) apm
 
-.PHONY: help check test fmt validate
+.PHONY: help check test fmt validate terraform-test
 help: ## List local workflows.
 	@awk 'BEGIN { FS = ":.*##" } /^[[:alnum:]_.-]+:.*##/ { printf "  %-22s %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 test: ## Test mail processing offline.
@@ -12,10 +12,12 @@ fmt: ## Format Terraform.
 	docker run --rm --network none -v "$(CURDIR):/work" -w /work hashicorp/terraform:$(shell cat .terraform-version) fmt -recursive
 validate: ## Validate module/example without AWS credentials.
 	bash scripts/validate.sh
-check: release-test apm-check test harness-test privacy-check validate hooks-test renovate-check ## Run credential-free module checks.
+terraform-test: ## Test routing and IAM plans with mocked providers.
+	bash scripts/validate.sh --test
+check: terraform-test release-test apm-check test harness-test privacy-check validate hooks-test renovate-check ## Run credential-free module checks.
 
 .PHONY: harness-test privacy-check
-harness-test: ## Test private configuration and manual verification.
+harness-test: ## Test private routing/recovery harness offline.
 	uv run --script tests/test_harness.py -v
 privacy-check: ## Inspect public candidates and staged blobs for private data.
 	uv run --script scripts/privacy_check.py

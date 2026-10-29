@@ -7,8 +7,9 @@ locals {
   partition = data.aws_partition.current.partition
   rule_arn  = "arn:${local.partition}:ses:${local.region}:${local.account}:receipt-rule-set/${var.receipt_rule_set_name}:receipt-rule/${var.name}"
   # SES can authorize the verified destination identity when sending in sandbox.
-  destination_identity_arn = "arn:${local.partition}:ses:${local.region}:${local.account}:identity/${var.forward_to}"
-  identity_arn             = "arn:${local.partition}:ses:${local.region}:${local.account}:identity/${var.domain}"
+  destinations              = distinct([for rule in values(var.forwarding_rules) : lower(rule.forward_to)])
+  destination_identity_arns = [for destination in local.destinations : "arn:${local.partition}:ses:${local.region}:${local.account}:identity/${destination}"]
+  identity_arn              = "arn:${local.partition}:ses:${local.region}:${local.account}:identity/${var.domain}"
 }
 resource "aws_ses_domain_identity" "domain" { domain = var.domain }
 resource "aws_ses_domain_dkim" "domain" { domain = var.domain }
@@ -22,8 +23,8 @@ resource "aws_s3_bucket" "raw" {
       error_message = "Verify independent failure alerts and replay before enabling expiry."
     }
     precondition {
-      condition     = endswith(var.recipient, "@${var.domain}") && endswith(var.forward_from, "@${var.domain}") && lower(var.forward_to) != lower(var.recipient)
-      error_message = "Recipient and sender must belong to the verified domain; forwarding destination must differ."
+      condition     = lower(var.recipient_domain) == lower(var.domain) && endswith(lower(var.forward_from), "@${lower(var.domain)}") && alltrue([for destination in local.destinations : !endswith(destination, "@${lower(var.recipient_domain)}")])
+      error_message = "Receiving domain must equal the verified domain, sender must belong to it, and destinations must be outside it."
     }
   }
 }
@@ -47,11 +48,14 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "raw" {
 resource "aws_s3_bucket_lifecycle_configuration" "raw" {
   count  = var.raw_retention_days == null ? 0 : 1
   bucket = aws_s3_bucket.raw.id
-  rule {
-    id     = "transient-mail"
-    status = "Enabled"
-    filter { prefix = "incoming/" }
-    expiration { days = var.raw_retention_days }
+  dynamic "rule" {
+    for_each = { transient-mail = "incoming/", transient-metadata = "metadata/" }
+    content {
+      id     = rule.key
+      status = "Enabled"
+      filter { prefix = rule.value }
+      expiration { days = var.raw_retention_days }
+    }
   }
 }
 resource "aws_s3_bucket_policy" "raw" {
@@ -81,17 +85,20 @@ resource "aws_cloudwatch_log_group" "forwarder" {
   retention_in_days = 30
 }
 resource "aws_iam_role" "forwarder" {
-  name               = var.name
-  assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "lambda.amazonaws.com" }, Action = "sts:AssumeRole" }] })
+  name                 = var.name
+  path                 = var.runtime_role_path
+  permissions_boundary = var.runtime_permissions_boundary_arn
+  assume_role_policy   = jsonencode({ Version = "2012-10-17", Statement = [{ Effect = "Allow", Principal = { Service = "lambda.amazonaws.com" }, Action = "sts:AssumeRole" }] })
 }
 resource "aws_iam_role_policy" "forwarder" {
   role = aws_iam_role.forwarder.id
   policy = jsonencode({ Version = "2012-10-17", Statement = [
     { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.forwarder.arn}:*" },
     { Effect = "Allow", Action = ["s3:GetObject"], Resource = "${aws_s3_bucket.raw.arn}/incoming/*" },
+    { Effect = "Allow", Action = ["s3:GetObject", "s3:PutObject"], Resource = "${aws_s3_bucket.raw.arn}/metadata/*" },
     { Effect = "Allow", Action = ["dynamodb:PutItem", "dynamodb:GetItem", "dynamodb:UpdateItem"], Resource = aws_dynamodb_table.dedup.arn },
     { Effect = "Allow", Action = ["sqs:SendMessage"], Resource = aws_sqs_queue.failures.arn },
-    { Effect = "Allow", Action = ["ses:SendEmail", "ses:SendRawEmail"], Resource = [local.identity_arn, local.destination_identity_arn, aws_sesv2_configuration_set.forwarder.arn], Condition = { StringEquals = { "ses:FromAddress" = var.forward_from }, "ForAllValues:StringEquals" = { "ses:Recipients" = [var.forward_to] } } }
+    { Effect = "Allow", Action = ["ses:SendEmail", "ses:SendRawEmail"], Resource = concat([local.identity_arn, aws_sesv2_configuration_set.forwarder.arn], local.destination_identity_arns), Condition = { StringEquals = { "ses:FromAddress" = var.forward_from }, "ForAllValues:StringEquals" = { "ses:Recipients" = local.destinations } } }
   ] })
 }
 data "archive_file" "forwarder" {
@@ -114,8 +121,8 @@ resource "aws_lambda_function" "forwarder" {
       RAW_BUCKET        = aws_s3_bucket.raw.id
       DEDUP_TABLE       = aws_dynamodb_table.dedup.name
       FORWARD_FROM      = var.forward_from
-      FORWARD_TO        = var.forward_to
-      RECIPIENT         = var.recipient
+      FORWARDING_RULES  = jsonencode(var.forwarding_rules)
+      RECIPIENT_DOMAIN  = lower(var.recipient_domain)
       MAX_MESSAGE_BYTES = tostring(var.max_message_bytes)
       CONFIGURATION_SET = aws_sesv2_configuration_set.forwarder.configuration_set_name
     }
@@ -141,7 +148,7 @@ resource "aws_lambda_permission" "ses" {
 resource "aws_ses_receipt_rule" "forwarder" {
   name          = var.name
   rule_set_name = var.receipt_rule_set_name
-  recipients    = [var.recipient]
+  recipients    = [lower(var.recipient_domain)]
   enabled       = true
   scan_enabled  = true
   tls_policy    = "Optional"

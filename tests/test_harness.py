@@ -16,6 +16,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'examples/end-to-end'))
 import config
 import deploy
+import suite
+import hashlib
+from email import policy
+from email.parser import BytesParser
 
 def load(name, path):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -61,7 +65,7 @@ class HarnessTests(unittest.TestCase):
         with patch.object(config, 'BUILD', self.path):
             run_id = mail_test.prepare(self.config)
         directory = self.path / 'runs' / run_id
-        outgoing = forwarder.compose((directory / 'outbound.eml').read_bytes(), self.config['forward_from'], self.config['destination'], 'fixture', 100000)
+        outgoing = forwarder.compose((directory / 'outbound.eml').read_bytes(), self.config['forward_from'], self.config['destination_a'], 'fixture', 100000)
         received = directory / 'received.eml'; received.write_bytes(outgoing)
         return run_id, directory, received
 
@@ -130,6 +134,136 @@ class HarnessTests(unittest.TestCase):
         self.assertTrue(privacy.reasons(Path('config.local.json'), b'{}'))
         self.assertEqual(privacy.reasons(Path('example.json'), b'"tester@example.org"'), [])
         self.assertEqual(privacy.reasons(Path('apm.lock.yaml'), ('hash: a' + '1' * 12 + 'b').encode()), [])
+
+    def test_two_inboxes_and_optional_fault_are_validated(self):
+        source = self.path / 'config.local.json'
+        for changes in [dict(destination_b=self.config['destination_a']),
+                        dict(destination_b='inbox@' + self.config['domain']),
+                        dict(simulate_destination_b_failure='true'),
+                        dict(runtime_permissions_boundary_arn='not-an-arn')]:
+            source.write_text(json.dumps(dict(self.config, **changes)))
+            with self.assertRaises(ValueError):
+                config.load(source)
+        source.write_text(json.dumps(self.config))
+        loaded = config.load(source)
+        self.assertFalse(loaded['simulate_destination_b_failure'])
+        with patch.object(config, 'BUILD', self.path):
+            variables, _ = deploy.prepare(dict(loaded, simulate_destination_b_failure=True))
+        self.assertTrue(json.loads(variables.read_text())['simulate_destination_b_failure'])
+        self.assertNotIn('recipient', json.loads(variables.read_text()))
+        self.assertEqual(json.loads(variables.read_text())['destination_b'], loaded['destination_b'])
+
+    def suite_evidence(self, run_id, name):
+        case = suite.load(run_id)['cases'][name]
+        directory = mail_test.run_path(case['fixture_id'])
+        message = BytesParser(policy=policy.default).parsebytes((directory / 'outbound.eml').read_bytes())
+        del message['Bcc']  # SMTP client removes Bcc; SES event retains the envelope recipient.
+        raw = directory / 'downloaded.eml'; raw.write_bytes(message.as_bytes())
+        message_id = 'ses-' + name
+        record = {'ses': {'mail': {'messageId': message_id, 'destination': case['recipients']},
+                          'receipt': {'recipients': case['recipients']}}}
+        rules = {
+            'acceptance': {'patterns': ['original-*', 'replacement-*'], 'forward_to': self.config['destination_a']},
+            'overlap': {'patterns': ['original-*'], 'forward_to': self.config['destination_b']},
+            'support': {'patterns': ['support'], 'forward_to': self.config['destination_a']},
+        }
+        metadata = forwarder.routing_metadata(record, {'RECIPIENT_DOMAIN': self.config['domain'], 'FORWARDING_RULES': json.dumps(rules)})
+        metadata_file = directory / 'downloaded.json'; metadata_file.write_text(json.dumps(metadata))
+        return case, directory, message_id, metadata_file, raw
+
+    def test_routing_suite_requires_all_storage_inboxes_and_observations(self):
+        with patch.object(config, 'BUILD', self.path):
+            run_id = suite.prepare(self.config)
+            self.assertEqual(len(suite.load(run_id)['cases']), 6)
+            self.assertEqual(set(suite.summary(run_id).values()), {'pending'})
+            for name in suite.load(run_id)['cases']:
+                case, directory, message_id, metadata, raw = self.suite_evidence(run_id, name)
+                self.assertFalse(all(suite.verify_storage(run_id, name, message_id, metadata, raw).values()))
+                self.assertTrue(all(suite.verify_storage(run_id, name, message_id, metadata, raw, True).values()))
+                for label in case['expected_inboxes']:
+                    received = directory / ('inbox-' + label + '.eml')
+                    received.write_bytes(forwarder.compose(raw.read_bytes(), self.config['forward_from'], self.config['destination_' + label], 'fixture', 100000))
+                    self.assertFalse(all(suite.verify_inbox(run_id, name, label, received).values()))
+                    self.assertTrue(all(suite.verify_inbox(run_id, name, label, received, True, True).values()))
+                self.assertNotEqual(suite.summary(run_id)[name], 'passed')
+                suite.observe(run_id, name, int('a' in case['expected_inboxes']), int('b' in case['expected_inboxes']), 10)
+                self.assertEqual(suite.summary(run_id)[name], 'passed')
+            self.assertEqual(set(suite.summary(run_id).values()), {'passed'})
+            other = suite.prepare(self.config)
+            self.assertNotEqual(suite.load(other)['cases']['original']['recipients'], suite.load(run_id)['cases']['original']['recipients'])
+            manifest = mail_test.run_path(run_id) / 'suite.json'
+            self.assertEqual(manifest.stat().st_mode & 0o777, 0o600)
+
+    def test_suite_rejects_mismatched_storage_and_wrong_inbox(self):
+        with patch.object(config, 'BUILD', self.path):
+            run_id = suite.prepare(self.config)
+            case, directory, message_id, metadata, raw = self.suite_evidence(run_id, 'multiple')
+            wrong = json.loads(metadata.read_text()); wrong['receipt_recipients'] = case['recipients'][:1]
+            metadata.write_text(json.dumps(wrong))
+            checks = suite.verify_storage(run_id, 'multiple', message_id, metadata, raw, True)
+            self.assertFalse(checks['receipt_recipients'])
+            self.assertEqual(suite.summary(run_id)['multiple'], 'failed')
+            with self.assertRaises(ValueError):
+                suite.verify_inbox(run_id, 'replacement', 'b', raw, True, True)
+            with self.assertRaises(ValueError):
+                suite.observe(run_id, 'original', -1, 0, 10)
+            with self.assertRaises(ValueError):
+                suite.observe(run_id, 'original', 1, 1, 0)
+            self.assertFalse(suite.observe(run_id, 'original', 2, 1, 10))
+            self.assertFalse(suite.observe(run_id, 'unmatched', 1, 0, 10))
+
+    def test_storage_rejects_wrong_run_mime_and_exposed_bcc(self):
+        with patch.object(config, 'BUILD', self.path):
+            run_id = suite.prepare(self.config)
+            case, directory, message_id, metadata, raw = self.suite_evidence(run_id, 'multiple')
+            checks = suite.verify_storage(run_id, 'multiple', message_id, metadata, directory / 'outbound.eml', True)
+            self.assertFalse(checks['bcc_not_visible'])
+            other = suite.prepare(self.config)
+            other_case = suite.load(other)['cases']['multiple']
+            other_raw = mail_test.run_path(other_case['fixture_id']) / 'outbound.eml'
+            self.assertFalse(suite.verify_storage(run_id, 'multiple', message_id, metadata, other_raw, True)['subject_identifier'])
+
+    def test_replacing_storage_evidence_invalidates_prior_conclusions(self):
+        with patch.object(config, 'BUILD', self.path):
+            run_id = suite.prepare(self.config, recovery=True)
+            case, directory, message_id, metadata, raw = self.suite_evidence(run_id, 'original')
+            suite.verify_storage(run_id, 'original', message_id, metadata, raw, True)
+            suite.observe(run_id, 'original', 1, 1, 10)
+            state = suite.load(run_id)
+            state['checkpoints'] = {'failed': {'passed': True}}
+            suite.save(run_id, state)
+            # Different JSON bytes must trigger renewed recovery evidence even
+            # when the routing values still pass their schema/content checks.
+            metadata.write_text(json.dumps(json.loads(metadata.read_text()), indent=2))
+            self.assertTrue(all(suite.verify_storage(run_id, 'original', message_id, metadata, raw, True).values()))
+            state = suite.load(run_id)
+            self.assertFalse(state['cases']['original']['observation'])
+            self.assertNotIn('checkpoints', state)
+            key = json.loads((directory / 'ledger-key-a.json').read_text())
+            self.assertTrue(key['id']['S'].startswith(message_id + '#'))
+            self.assertEqual((directory / 'ledger-key-a.json').stat().st_mode & 0o777, 0o600)
+
+    def test_recovery_checkpoints_require_original_keys_and_unchanged_success(self):
+        with patch.object(config, 'BUILD', self.path):
+            run_id = suite.prepare(self.config, recovery=True)
+            case, directory, message_id, metadata, raw = self.suite_evidence(run_id, 'original')
+            suite.verify_storage(run_id, 'original', message_id, metadata, raw, True)
+            paths = {label: directory / ('ledger-' + label + '.json') for label in ['a', 'b']}
+            def ledger(label, status, delivery):
+                key = message_id + '#' + hashlib.sha256(self.config['destination_' + label].lower().encode()).hexdigest()
+                paths[label].write_text(json.dumps({'Item': {'id': {'S': key}, 'status': {'S': status}, 'delivery_id': {'S': delivery}}}))
+            ledger('a', 'sent', 'delivery-a'); ledger('b', 'processing', '')
+            self.assertFalse(all(suite.verify_ledger(run_id, 'failed', paths['a'], paths['b']).values()))
+            self.assertTrue(all(suite.verify_ledger(run_id, 'failed', paths['a'], paths['b'], True).values()))
+            self.assertTrue(all(suite.verify_ledger(run_id, 'replayed', paths['a'], paths['b'], True).values()))
+            ledger('a', 'sent', 'changed-delivery')
+            self.assertFalse(suite.verify_ledger(run_id, 'replayed', paths['a'], paths['b'], True)['a_delivery_unchanged'])
+            ledger('a', 'sent', 'delivery-a')
+            suite.verify_ledger(run_id, 'replayed', paths['a'], paths['b'], True)
+            ledger('b', 'sent', 'delivery-b')
+            self.assertTrue(all(suite.verify_ledger(run_id, 'recovered', paths['a'], paths['b'], True).values()))
+            self.assertEqual(suite.summary(run_id)['ledger_recovered'], 'passed')
+            self.assertEqual(suite.summary(run_id)['original'], 'pending')
 
 if __name__ == '__main__':
     unittest.main()

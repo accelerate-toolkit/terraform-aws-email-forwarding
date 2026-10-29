@@ -35,6 +35,9 @@ def run_path(run_id):
 
 
 def prepare(config):
+    config = dict(config)
+    config.setdefault('recipient', 'support@' + config['domain'])
+    config.setdefault('destination', config['destination_a'])
     run_id = uuid.uuid4().hex
     directory = run_path(run_id)
     directory.mkdir(parents=True, mode=0o700)
@@ -46,6 +49,8 @@ def prepare(config):
     message = EmailMessage()
     message['From'] = config['test_sender']
     message['To'] = config['recipient']
+    if config.get('bcc'):
+        message['Bcc'] = config['bcc']
     message['Subject'] = marker
     message.set_content(plain)
     message.add_alternative(html, subtype='html')
