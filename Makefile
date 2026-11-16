@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
-APM_VERSION := 0.33.0
-RENOVATE_VERSION := 44.151.0
+APM_VERSION := 0.35.1
+RENOVATE_VERSION := 44.244.2
 APM = UV_TOOL_DIR=$(CURDIR)/build/uv-tools uv tool run --from apm-cli==$(APM_VERSION) apm
 
 .PHONY: help check test fmt validate terraform-test
