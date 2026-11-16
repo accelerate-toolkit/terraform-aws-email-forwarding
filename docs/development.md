@@ -1,10 +1,11 @@
 # Repository onboarding and dependency maintenance
 
-Run `make` for supported actions. `make setup` installs the frozen APM dependency
+Run `make` for supported actions. `make setup` installs the pinned APM dependency
 and generates `AGENTS.md`, then installs advisory Git hooks. Review the APM install
 preview. Edit `.apm/instructions/`, not compiled instructions. No ontologies are
-used. `make apm-update` deliberately refreshes pins/lockfile for review; ordinary
-setup must use the accepted lock. Restart the agent session after updating skills.
+used. `apm.yml` records accepted dependency pins; `apm.lock.yaml` stays ignored locally.
+`make apm-update` refreshes installation state within those refs; adopting a new
+release requires reviewing its manifest pin. Restart the agent session after updating skills.
 
 The hook reminder is advisory, offline and never installs dependencies. Existing
 hooks and `core.hooksPath` are preserved. Where a hook already exists, integrate
@@ -17,7 +18,7 @@ The public shared preset is `github>accelerate-toolkit/renovate-config`. This re
 keeps its local scheduling and dependency grouping rules. All dependency version
 updates, including major updates, share one PR, overriding the preset's per-manager
 groups. Standalone lock-file maintenance is disabled because Renovate cannot combine
-it with version updates; lockfiles still update alongside dependency changes.
+it with version updates; other package lockfiles still update alongside dependency changes.
 The normal dependency PR concurrency limit is one. Automerge includes major updates,
 but waits for module checks. Checks have read-only GitHub permissions; the dedicated source-release job
 has contents-write permission and no AWS access;
@@ -25,8 +26,8 @@ merging never applies infrastructure or sends test mail. The example directory i
 explicitly included in dependency extraction, overriding the shared preset's
 example exclusion. Private configuration and build outputs remain excluded.
 
-The schedule-only weekly runner uses pinned Node, uv, APM and Renovate. It installs APM
-so dependency updates can regenerate `apm.lock.yaml`. The runner starts Mondays at
+The schedule-only weekly runner uses pinned Node and Renovate. Renovate updates
+APM manifest pins without regenerating local APM lockfiles. The runner starts Mondays at
 02:17 UTC (02:17 London in winter, 03:17 in summer), subject to GitHub Actions
 scheduling delays. New update creation is allowed before 06:00 Monday in
 `Europe/London`. The workflow has no push, pull-request or manual dispatch trigger.
@@ -52,7 +53,7 @@ complete:
 3. Keep the dependency/check jobs’ Actions `GITHUB_TOKEN` read-only; use the separate bot identity for
    dependency branches/PRs. No AWS credentials, OIDC deployment role or state access.
 4. Confirm a successful Module checks run and a successful dependency runner.
-   Inspect extraction and a real dependency PR, APM lock update where relevant,
+   Inspect extraction and a real dependency PR, APM manifest pin updates where relevant,
    and successful automerge. A secret's presence alone proves none of these.
 
 Repository-level secrets also work when the GitHub plan prevents organization

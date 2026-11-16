@@ -23,10 +23,10 @@ privacy-check: ## Inspect public candidates and staged blobs for private data.
 	uv run --script scripts/privacy_check.py
 
 .PHONY: setup apm-install apm-update apm-compile apm-version hooks-install hooks-test renovate-check renovate-extract renovate-run
-setup: apm-install hooks-install ## Install locked local skills and advisory Git hooks.
-apm-install: ## Install locked APM dependencies and compile instructions.
-	$(APM) install --target codex --frozen --dry-run
-	$(APM) install --target codex --frozen
+setup: apm-install hooks-install ## Install pinned local skills and advisory Git hooks.
+apm-install: ## Install pinned APM dependencies and compile instructions.
+	$(APM) install --target codex --dry-run
+	$(APM) install --target codex
 	$(MAKE) apm-compile
 apm-update: ## Deliberately resolve newer APM dependencies for review.
 	$(APM) install --target codex --update --dry-run
@@ -48,8 +48,8 @@ renovate-run: ## Run the dependency bot with GitHub-only credentials.
 	npx --yes --package=renovate@$(RENOVATE_VERSION) renovate
 
 .PHONY: apm-check
-apm-check: ## Preview locked skill installation without changing the workspace.
-	$(APM) install --target codex --frozen --dry-run
+apm-check: ## Preview pinned skill installation without changing the workspace.
+	$(APM) install --target codex --dry-run
 
 .PHONY: release-plan release-test
 release-plan: ## Preview the next source version without publishing.

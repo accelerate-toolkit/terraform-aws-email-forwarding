@@ -121,7 +121,7 @@ This is a development feedback loop; a production canary remains a separate desi
 
 ## APM and Renovate
 
-Run `make setup` for locked APM skills and advisory hooks, and `make check` for
+Run `make setup` for pinned APM skills and advisory hooks, and `make check` for
 local verification. See [development and GitHub activation](docs/development.md).
 The shared Renovate preset enables automerge; this module's credential-free checks
 must pass first. Dependency updates never deploy infrastructure. Local onboarding

@@ -9,7 +9,7 @@ mkdir -p "$root/build"
 stage=$(mktemp -d "$root/build/renovate-extract.XXXXXX")
 trap 'rm -rf "$stage"' EXIT
 # Explicit public-input allowlist: never mount config.local.json or test artifacts.
-cp "$root/renovate.json" "$root/Makefile" "$root/apm.yml" "$root/apm.lock.yaml" \
+cp "$root/renovate.json" "$root/Makefile" "$root/apm.yml" \
   "$root/.terraform-version" "$root/.node-version" "$stage/"
 cp "$root/"*.tf "$stage/"
 mkdir -p "$stage/.github/workflows" "$stage/examples/end-to-end" "$stage/scripts" "$stage/tests"

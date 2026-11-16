@@ -24,14 +24,6 @@ jobs:
       - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .node-version
-      - uses: astral-sh/setup-uv@v10.3.2
-        with:
-          version: "0.13.5"
-          enable-cache: false
-      - name: Install the pinned APM CLI for lockfile updates
-        run: |
-          uv tool install "apm-cli==$(make --no-print-directory apm-version)"
-          echo "$(uv tool dir --bin)" >> "$GITHUB_PATH"
       - name: Run Renovate with GitHub-only access
         env:
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}

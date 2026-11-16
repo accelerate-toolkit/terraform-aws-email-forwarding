@@ -20,3 +20,6 @@ apm_modules/
 *.tfbackend
 .env
 .env.*
+
+# Local APM installation state; dependency revisions are pinned in apm.yml.
+/apm.lock.yaml

@@ -9,7 +9,7 @@ case "${1:-}" in
   *) exit 0 ;;
 esac
 before=$(git rev-parse --verify ORIG_HEAD 2>/dev/null) || exit 0
-changed=$(git diff --name-only "$before" HEAD -- apm.yml apm.lock.yaml 2>/dev/null) || exit 0
+changed=$(git diff --name-only "$before" HEAD -- apm.yml 2>/dev/null) || exit 0
 if [ -n "$changed" ]; then
   printf '\nAPM dependencies changed.\nRun make apm-install to refresh your skills and instructions.\n'
 fi
