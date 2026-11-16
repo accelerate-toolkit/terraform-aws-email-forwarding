@@ -15,11 +15,10 @@ hooks and `core.hooksPath` are preserved. Where a hook already exists, integrate
 ## Renovate
 
 The public shared preset is `github>accelerate-toolkit/renovate-config`. This repository
-keeps its local scheduling and dependency grouping rules. All dependency version
-updates, including major updates, share one PR, overriding the preset's per-manager
-groups. Standalone lock-file maintenance is disabled because Renovate cannot combine
+keeps local scheduling and inherits the shared internal/external dependency groups,
+including major updates. Standalone lock-file maintenance is disabled because Renovate cannot combine
 it with version updates; other package lockfiles still update alongside dependency changes.
-The normal dependency PR concurrency limit is one. Automerge includes major updates,
+The shared normal dependency PR concurrency limit is two. Automerge includes major updates,
 but waits for module checks. Checks have read-only GitHub permissions; the dedicated source-release job
 has contents-write permission and no AWS access;
 merging never applies infrastructure or sends test mail. The example directory is

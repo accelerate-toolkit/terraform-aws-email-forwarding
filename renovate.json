@@ -8,21 +8,9 @@
     "before 6am on monday"
   ],
   "automerge": true,
-  "prConcurrentLimit": 1,
   "lockFileMaintenance": {
     "enabled": false
   },
-  "packageRules": [
-    {
-      "matchPackageNames": [
-        "*"
-      ],
-      "groupName": "all dependencies",
-      "groupSlug": "all-dependencies",
-      "separateMajorMinor": false,
-      "separateMinorPatch": false
-    }
-  ],
   "pep723": {
     "managerFilePatterns": [
       "/^scripts/.*\\.py$/",
