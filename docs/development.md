@@ -26,55 +26,26 @@ merging never applies infrastructure or sends test mail. The example directory i
 explicitly included in dependency extraction, overriding the shared preset's
 example exclusion. Private configuration and build outputs remain excluded.
 
-The schedule-only weekly runner uses pinned Node and Renovate. Renovate updates
-APM manifest pins without regenerating local APM lockfiles. The runner starts Mondays at
-02:17 UTC (02:17 London in winter, 03:17 in summer), subject to GitHub Actions
-scheduling delays. New update creation is allowed before 06:00 Monday in
-`Europe/London`. The workflow has no push, pull-request or manual dispatch trigger.
-Commit checks validate Renovate configuration without running the dependency bot.
-Completed checks may wait
-until the next runner invocation for automerge. Renovate covers module/example Terraform providers, Terraform
-CLI, GitHub Actions, Node, uv/APM/Renovate pins and versioned APM packages. Run
-`make renovate-check` and `make renovate-extract` locally. Extraction mounts only
-public dependency inputs; it receives no token, private test files or AWS credentials.
+The Mend-hosted Renovate app replaces the weekly Actions runner and its token.
+New updates are allowed before 06:00 Monday in Europe/London; later hosted runs
+can merge after Module checks pass. The app updates APM manifest pins without
+regenerating ignored APM lockfiles. No AWS credentials or deployment permissions
+are supplied. Run `make renovate-check` locally; use `make renovate-extract` only
+when changing extraction inputs. A manual `make renovate-run` remains a diagnostic
+alternative requiring its own GitHub-only credentials, not a second active bot.
 
 ## GitHub activation checklist
 
-Local preparation does not create a running GitHub bot. Before marking onboarding
-complete:
+1. Publish the reviewed configuration and remove the duplicate weekly runner.
+2. Grant the Mend Renovate app access to this repository.
+3. Inspect hosted extraction, a real dependency PR and its existing Module checks.
+4. Verify Renovate-managed squash merging; do not dispatch extra Actions solely
+   to prove onboarding or bypass failed checks. Retire unused old tokens only
+   after checking their remaining consumers.
 
-1. Publish the reviewed public repository and configure its merge/check policy.
-   Review `make privacy-check` and the actual diff first; never publish local config.
-2. Provision a GitHub-only `RENOVATE_TOKEN` repository Actions secret, or document
-   an approved shared runner/App replacing this repository runner. A fine-grained
-   token for this runner needs access to this repository, Contents, Pull requests,
-   Issues and Workflows read/write, plus Commit statuses read for check evaluation.
-   Never print or commit its value. Record its expiry privately and arrange rotation.
-3. Keep the dependency/check jobs’ Actions `GITHUB_TOKEN` read-only; use the separate bot identity for
-   dependency branches/PRs. No AWS credentials, OIDC deployment role or state access.
-4. Confirm a successful Module checks run and a successful dependency runner.
-   Inspect extraction and a real dependency PR, APM manifest pin updates where relevant,
-   and successful automerge. A secret's presence alone proves none of these.
-
-Repository-level secrets also work when the GitHub plan prevents organization
-secrets from being used by private repositories. Do not assume org-secret access
-or require a paid-plan change merely to onboard a repository.
-
-Current status: repository publication, Module checks and an authenticated
-Renovate run are verified. The Dependency Dashboard exists; actual dependency
-PR/merge behaviour remains unverified. The runner cannot currently read
-vulnerability alerts. Dedicated source-release automation is prepared;
-see [releases](releases.md).
-
-
-Local verification completed: frozen APM install/compile and advisory hook tests
-pass; all 17 forwarding/harness tests pass; module and example Terraform validation,
-privacy and Renovate schema checks pass. Token-free extraction detects 24 dependency
-entries across seven managers, including APM and the executable Terraform example.
-GitHub-dependent version lookup warns that a token is required; authenticated
-lookup, runner execution and automerge are not yet verified. The module remains
-pinned to published org-meta-bundle v0.4.0; newer shared onboarding guidance being
-prepared in agent-context requires its own release before consumer adoption.
+The app rollout is prepared; live hosted verification remains pending. Historical
+local module checks and prior runner success do not prove the new app's operation.
+Source publication remains separate from deployment; see [releases](releases.md).
 
 
 ## Sandbox destination authorization
