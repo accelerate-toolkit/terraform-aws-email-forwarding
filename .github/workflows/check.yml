@@ -7,14 +7,14 @@ permissions:
   contents: read
 jobs:
   check:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
-          version: "0.13.5"
+          version: "0.13.8"
           enable-cache: false
       - run: make check
