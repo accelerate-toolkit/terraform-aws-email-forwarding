@@ -5,6 +5,6 @@ targets:
   - codex
 dependencies:
   apm:
-    - accelerate-toolkit/agent-context/packages/org-meta-bundle#v0.15.5
+    - accelerate-toolkit/agent-context/packages/org-meta-bundle#v1.1.1
   mcp: []
 includes: auto
