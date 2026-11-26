@@ -39,6 +39,11 @@ sends the invocation record to the failure queue (14-day retention). Successful
 ledger entries have no automatic expiry, so delayed replays remain deduplicated.
 Raw messages also have **no expiry by default**.
 
+The sending configuration set explicitly declares an empty `delivery_options`
+block to match the empty object returned by SES. No TLS policy, dedicated sending
+pool or delivery-duration override is configured. This avoids a repeat-plan diff
+that removes the returned empty block on every run.
+
 ## Inputs and boundaries
 
 Required: `name`, `receipt_rule_set_name`, `domain`, `recipient_domain`,

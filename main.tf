@@ -164,7 +164,12 @@ resource "aws_ses_receipt_rule" "forwarder" {
   }
   depends_on = [aws_s3_bucket_policy.raw, aws_lambda_permission.ses, aws_lambda_function_event_invoke_config.forwarder]
 }
-resource "aws_sesv2_configuration_set" "forwarder" { configuration_set_name = var.name }
+resource "aws_sesv2_configuration_set" "forwarder" {
+  configuration_set_name = var.name
+  # SES returns an empty options object even when no delivery overrides are set.
+  # Model that object explicitly to keep refresh and configuration consistent.
+  delivery_options {}
+}
 resource "aws_sesv2_configuration_set_event_destination" "failures" {
   configuration_set_name = aws_sesv2_configuration_set.forwarder.configuration_set_name
   event_destination_name = "delivery-failures"
